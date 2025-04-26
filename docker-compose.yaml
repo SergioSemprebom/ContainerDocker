@@ -3,62 +3,67 @@ version: '3.8'
 services:
   # --- Serviço PostgreSQL ---
   my-postgres:
-    image: postgres # Ou postgres:14, postgres:latest, etc.
+    image: postgres
     container_name: my-postgres
     restart: unless-stopped
     ports:
-      # Expõe o Postgres na porta 5433 do seu computador (Host)
       - "5433:5432" # Host:Container
     environment:
-      # Pega a senha do arquivo .env
+      POSTGRES_USER: ${POSTGRES_USER}           # Adicionado
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      # Opcional: Defina usuário e banco se necessário (descomente no .env também)
-      # POSTGRES_USER: ${POSTGRES_USER}
-      # POSTGRES_DB: ${POSTGRES_DB}
-      # Define o diretório de dados interno
+      POSTGRES_DB: ${POSTGRES_DB}               # Adicionado
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      # Bind Mount: Mapeia pasta local para dados do Postgres
-      # Use barras normais '/'
-      - "C:/Users/29414994823/OneDrive - PRODESP/GED/Docker/postgres:/var/lib/postgresql/data/pgdata"
+      - ./postgres_data:/var/lib/postgresql/data/pgdata
     networks:
-      # Conecta à rede compartilhada
       - my-network
+
+  # --- Serviço Flask App ---
+  my-flask-app:
+    build:
+      context: .        # Diretório onde está o Dockerfile
+      dockerfile: Dockerfile
+    container_name: my-flask-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000" # Host:Container (Mapeia a porta 8000 interna para a 8000 externa)
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@my-postgres:5432/${POSTGRES_DB}
+      FLASK_APP: main.py # Ou fakepinterest:app, etc. (Ajuste conforme seu CMD no Dockerfile)
+      FLASK_ENV: production
+      # Passa a SECRET_KEY do arquivo .env para o container
+      SECRET_KEY: ${FLASK_SECRET_KEY} # Usaremos FLASK_SECRET_KEY no .env por clareza
+      # Adicione outras variáveis aqui se necessário
+    networks:
+      - my-network
+    depends_on:
+      - my-postgres    # Garante que o banco inicie antes da app
 
   # --- Serviço pgAdmin 4 ---
   pgadmin:
-    image: dpage/pgadmin4 # Imagem oficial do pgAdmin 4
+    image: dpage/pgadmin4
     container_name: my_pgadmin4
     restart: unless-stopped
     environment:
-      # Define o email e senha para o login inicial no pgAdmin (pegos do .env)
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-      # Desabilita o modo de configuração inicial via interface (opcional)
-      PGADMIN_SETUP_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_SETUP_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_SETUP_EMAIL: ${PGADMIN_DEFAULT_EMAIL}       # Adicionado (Boa prática)
+      PGADMIN_SETUP_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD} # Adicionado (Boa prática)
     ports:
-      # Expõe a interface web do pgAdmin na porta 5050 do seu computador
-      - "15432:80" # Host:Container (A porta interna do pgAdmin é 80)
+      - "15432:80" # Host:Container
     volumes:
-      # Volume nomeado para persistir configurações do pgAdmin (servidores, etc.)
       - pgadmin_data:/var/lib/pgadmin
     networks:
-      # Conecta à mesma rede do Postgres
       - my-network
     depends_on:
-      # Garante que o Postgres inicie antes do pgAdmin
       - my-postgres
 
 # --- Configuração da Rede ---
 networks:
   my-network:
-    # Use 'external: true' se a rede já existe
-    external: true
-    # Ou use 'driver: bridge' se quiser que o Compose a crie
-    # driver: bridge
+    driver: bridge
 
 # --- Declaração de Volumes Nomeados ---
 volumes:
-  # Volume para persistir dados do pgAdmin
+  postgres_data: # Se quiser usar volume nomeado para postgres também
   pgadmin_data:
