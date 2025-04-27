@@ -9,35 +9,12 @@ services:
     ports:
       - "5433:5432" # Host:Container
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}           # Adicionado
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}               # Adicionado
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./postgres_data:/var/lib/postgresql/data/pgdata
     networks:
       - my-network
-
-  # --- Serviço Flask App ---
-  my-flask-app:
-    build:
-      context: .        # Diretório onde está o Dockerfile
-      dockerfile: Dockerfile
-    container_name: my-flask-app
-    restart: unless-stopped
-    ports:
-      - "8000:8000" # Host:Container (Mapeia a porta 8000 interna para a 8000 externa)
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@my-postgres:5432/${POSTGRES_DB}
-      FLASK_APP: main.py # Ou fakepinterest:app, etc. (Ajuste conforme seu CMD no Dockerfile)
-      FLASK_ENV: production
-      # Passa a SECRET_KEY do arquivo .env para o container
-      SECRET_KEY: ${FLASK_SECRET_KEY} # Usaremos FLASK_SECRET_KEY no .env por clareza
-      # Adicione outras variáveis aqui se necessário
-    networks:
-      - my-network
-    depends_on:
-      - my-postgres    # Garante que o banco inicie antes da app
 
   # --- Serviço pgAdmin 4 ---
   pgadmin:
@@ -47,8 +24,8 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-      PGADMIN_SETUP_EMAIL: ${PGADMIN_DEFAULT_EMAIL}       # Adicionado (Boa prática)
-      PGADMIN_SETUP_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD} # Adicionado (Boa prática)
+      PGADMIN_SETUP_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_SETUP_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "15432:80" # Host:Container
     volumes:
@@ -65,5 +42,4 @@ networks:
 
 # --- Declaração de Volumes Nomeados ---
 volumes:
-  postgres_data: # Se quiser usar volume nomeado para postgres também
   pgadmin_data:
